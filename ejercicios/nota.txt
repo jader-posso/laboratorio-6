@@ -1,0 +1,82 @@
+Ejercicio Practica 6.2
+
+
+1. ¿Para qué sirve .venv?
+El directorio .venv (entorno virtual) sirve para isolar las dependencias de un proyecto. Crea un espacio de trabajo autocontenido que incluye su propia copia del intérprete de Python, la biblioteca estándar y los paquetes instalados (como Django). Esto evita conflictos entre proyectos que requieren versiones diferentes de una misma librería y mantiene limpio el sistema operativo global.
+
+2. ¿Por qué requirements.txt sí debe versionarse?
+El archivo requirements.txt es un registro en texto plano de todas las librerías y versiones exactas que tu proyecto necesita para funcionar. Debe incluirse en el control de versiones (Git) porque es el plano de reconstrucción del proyecto: le permite a cualquier otro desarrollador (o a un servidor de producción) replicar exactamente el mismo entorno ejecutando un comando (pip install -r requirements.txt).
+
+3. ¿Por qué .venv/ no debe formar parte del repositorio?
+No debe versionarse por tres razones principales:
+
+Peso y redundancia: Contiene binarios y archivos pesados específicos del sistema operativo que pueden recrearse fácilmente desde cero usando el requirements.txt.
+
+Problemas de rutas: Las rutas internas dentro de un entorno virtual suelen ser absolutas y están vinculadas a la máquina del desarrollador que lo creó, por lo que no funcionarán en la computadora de otra persona.
+
+Buenas prácticas: Los archivos generados o dependientes del entorno local (como logs, cachés y entornos virtuales) se excluyen mediante el archivo .gitignore.
+
+4. Qué revisarías si dos terminales muestran versiones de Django diferentes
+Si al abrir dos terminales diferentes observas distintas versiones de Django, revisa los siguientes puntos en orden de probabilidad:
+
+Activación del entorno virtual: Comprueba si el .venv está activo en ambas terminales. Es muy común que en una terminal estés usando el entorno virtual y en la otra el Python global del sistema (o un entorno virtual diferente).
+
+Ruta del ejecutable de Python: Ejecuta which python (en macOS/Linux) o where python (en Windows) en ambas terminales para verificar exactamente qué binario de Python se está ejecutando en cada una.
+
+Comando de consulta: Asegúrate de estar consultando el entorno correcto usando explícitamente el intérprete del entorno activo (python -m django --version).
+
+
+Prediccion
+
+1. ¿Qué sucedería si ejecutaras startproject config sin el punto final?
+Si ejecutas el comando sin el punto (.), Django crea una estructura de carpetas anidada. Generará una carpeta principal llamada config, la cual contendrá el archivo manage.py y otra subcarpeta interna también llamada config con los archivos de configuración (settings.py, urls.py, etc.).
+
+Al añadir el punto (django-admin startproject config .), le indicas a Django que cree los archivos en el directorio actual, evitando esa duplicidad innecesaria de carpetas.
+
+2. ¿Es lo mismo config/urls.py que pages/views.py?
+No, cumplen propósitos completamente diferentes:
+
+config/urls.py: Es el enrutador central del proyecto. Funciona como la centralita que recibe las URLs que solicita el usuario y decide a qué vista enviarlas.
+
+pages/views.py: Pertenece a una aplicación específica (pages) y contiene la lógica de negocio. Son las funciones o clases que procesan la petición, interactúan con los datos (si es necesario) y devuelven una respuesta (como renderizar una plantilla HTML).
+
+3. ¿Por qué pages debe aparecer en INSTALLED_APPS?
+Debe registrarse en INSTALLED_APPS (dentro de config/settings.py) para que Django reconozca que la aplicación existe dentro del ecosistema del proyecto. Si no la incluyes, Django ignorará sus modelos, no buscará sus migraciones, y no podrá encontrar sus plantillas o archivos estáticos asociados.
+
+4. ¿Qué puedes afirmar realmente cuando python manage.py check termina bien?
+Puedes afirmar que la configuración del proyecto es sintácticamente correcta y que Django no detectó problemas estructurales evidentes (como configuraciones faltantes en settings.py o errores básicos de integración entre apps).
+
+Sin embargo, no garantiza que tu lógica de negocio esté libre de errores, ni que la base de datos esté actualizada (para eso último se usan las migraciones). Es una verificación estática del sistema, no una prueba funcional.
+
+
+Ejercicio reconoce responsabilidades 
+
+Global settings ->  config/settings.py (Archivo de configuración global del proyecto)
+
+Main URL configuration  -> config/urls.py (Enrutador principal de URLs)
+
+Page behavior ->  pages/views.py (Lógica de las vistas y comportamiento de la página)
+
+Application registration ->  INSTALLED_APPS (Registro de aplicaciones dentro de settings.py)
+
+Development commands ->  manage.py (Herramienta de línea de comandos para la gestión del desarrollo)
+
+
+
+Preguntas finales 
+
+1. ¿Qué diferencia existe entre el proyecto config y la aplicación pages?El proyecto (config): Es el contenedor global y la configuración general de todo el sitio web. No contiene la lógica de negocio específica de una sección, sino los ajustes compartidos (config/settings.py), el enrutador central (config/urls.py) y las configuraciones de despliegue.La aplicación (pages o resources): Es un módulo independiente y reutilizable que encapsula una funcionalidad concreta de la web (por ejemplo, la gestión de páginas estáticas, recursos, usuarios, etc.). Tiene su propia estructura de vistas (views.py), modelos y plantillas. Un proyecto se compone de una o varias aplicaciones.
+
+2. ¿Qué ocurre, desde que escribes /resources/, hasta que ves la lista en el navegador?El ciclo completo de la petición sigue estos pasos:Navegador $\rightarrow$ Django: El usuario escribe la URL /resources/ y el navegador envía una petición HTTP al servidor de desarrollo de Django.Enrutador principal (config/urls.py): Recibe la petición y busca una coincidencia. Al encontrarla, deriva el control (gracias a include()) al archivo de rutas de la aplicación correspondiente (ej. resources/urls.py).Enrutador de la app (resources/urls.py): Encuentra la ruta vacía o específica de recursos y la asocia a una función o clase en resources/views.py.La vista (resources/views.py): Ejecuta la lógica necesaria (por ejemplo, recuperar los datos de una lista o base de datos) y llama a la función render().Plantilla y Respuesta: render() combina los datos con el archivo HTML correspondiente, generando una respuesta HTTP (HttpResponse) que viaja de vuelta al navegador, el cual la interpreta y muestra la lista en pantalla.
+
+3. ¿Qué ventaja aporta include() frente a colocar todas las rutas en un único archivo?Aporta modularidad, escalabilidad y mantenimiento. Si colocaras todas las rutas del proyecto en config/urls.py, el archivo crecería de forma descontrolada a medida que añadas aplicaciones. Con include(), cada aplicación es dueña de sus propias URLs (app/urls.py), lo que permite que el código esté desacoplado, sea más fácil de leer y se pueda reutilizar en otros proyectos sin alterar el núcleo.
+
+4. ¿Por qué utilizamos render() en vez de crear todo el HTML con HttpResponse?HttpResponse te obliga a escribir código HTML directamente como cadenas de texto (strings) dentro del archivo de Python (views.py). Esto vuelve el código ilegible, difícil de mantener y propenso a errores tipográficos o fallos de seguridad (como vulnerabilidades XSS).render() separa la lógica de negocio (en Python) de la capa de presentación (en HTML). Permite utilizar el sistema de plantillas de Django (con herencia, etiquetas como {% for %}, y variables dinámicas) organizando los archivos HTML en carpetas dedicadas (templates/).
+
+5. ¿Qué problema resuelve base.html y qué ocurre si se modifica su navegación?base.html resuelve la duplicación de código siguiendo el principio DRY (Don't Repeat Yourself). Actúa como una plantilla maestra que define la estructura común de la página (la barra de navegación superior, el pie de página, los enlaces a CSS/JS y bloques vacíos como {% block content %}).Si modificas su navegación (por ejemplo, añades un nuevo enlace en el menú): El cambio se propagará automáticamente a todas las páginas y vistas del sitio web que hereden de ella ({% extends 'base.html' %}), evitando tener que editar archivo por archivo.
+
+6. ¿Qué diferencia hay entre una respuesta 404 y un error TemplateDoesNotExist?Una respuesta 404 (Not Found): Es un código de estado HTTP estándar que el servidor devuelve al navegador del usuario cuando la URL solicitada no existe en el sistema de rutas (urls.py). Es un comportamiento normal de cara al usuario final.Un error TemplateDoesNotExist: Es una excepción interna de Python/Django que ocurre durante el desarrollo o la ejecución del servidor. Significa que la ruta o la vista sí existen, pero el archivo HTML (.html) especificado en la función render() no se encuentra en las rutas de carpetas de plantillas configuradas.
+
+7. ¿Por qué la lista de recursos siempre vuelve a los valores definidos en views.py al iniciar la aplicación? ¿Qué faltaría para guardar altas, ediciones o eliminaciones realizadas por usuarios?Por qué vuelve al origen: Porque los datos están almacenados en una estructura de datos volátil en memoria (como una lista o un diccionario de Python dentro de views.py). Cada vez que la aplicación se reinicia, el script se vuelve a ejecutar y carga el estado inicial estático.Qué falta: Se necesita integrar una Base de datos utilizando los Modelos de Django (models.py) junto con el sistema de migraciones (makemigrations y migrate). Esto permite persistir la información de forma permanente en un motor SQL (como SQLite o PostgreSQL) al realizar operaciones de creación, lectura, actualización y borrado (CRUD).
+
+8. ¿Qué demuestra python manage.py check y qué demuestran las pruebas automatizadas? ¿Por qué no son equivalentes?python manage.py check: Es una verificación estática que demuestra que la configuración del proyecto es correcta y sintácticamente válida (revisa que no falten configuraciones en settings.py, que las apps estén bien registradas o que no haya errores obvios de estructura).Las pruebas automatizadas (manage.py test): Son pruebas funcionales y unitarias ejecutadas mediante código que evalúan el comportamiento lógico de la aplicación (si las vistas devuelven el código 200 esperado, si los formularios validan bien, si los permisos funcionan, etc.).Por qué no son equivalentes: Un proyecto puede tener una configuración impecable (check pasa sin errores) pero contener fallos lógicos graves en sus vistas o lógica de negocio que solo las pruebas automatizadas detectan.
