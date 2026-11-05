@@ -1,0 +1,35 @@
+**¿Qué diferencia existe entre servidor, esquema, cuenta SQL y modelo Django?**
+Un servidor es la infraestructura física o virtual que aloja y ejecuta el sistema gestor de bases de datos, mientras que el esquema es la estructura organizativa interna que agrupa tablas, vistas y relaciones dentro de ese servidor. La cuenta SQL gestiona las credenciales y los permisos que controlan quién puede acceder o modificar dichos esquemas, y el modelo de Django es la clase en código Python que mapea directamente a una de esas tablas, permitiendo interactuar con los datos mediante programación sin escribir código SQL manualmente.
+
+**¿Por qué MariaDB utiliza el backend django.db.backends.mysql?**
+MariaDB utiliza este backend porque es una bifurcación (fork) directa del código fuente original de MySQL, creada por sus mismos fundadores. Debido a este origen técnico compartido, ambos motores mantienen una estricta compatibilidad a nivel de protocolo de red, comandos SQL y conectores, lo que permite que el adaptador nativo de MySQL en Django se comunique de forma transparente y sin errores con MariaDB sin requerir un controlador adicional.
+
+**¿Para qué sirven .env y .env.example?**
+El archivo `.env` se encarga de almacenar variables de entorno con información sensible y específica del despliegue (como contraseñas de bases de datos, claves secretas o tokens de APIs), manteniéndolas seguras y fuera del sistema de control de versiones. Por el contrario, `.env.example` es una plantilla sin datos reales que sí se sube al repositorio, cuyo único propósito es mostrar a otros desarrolladores qué variables y estructura necesitan configurar en su propio entorno local para que el proyecto funcione correctamente.
+
+**¿Qué hacen makemigrations y migrate, y por qué no son intercambiables?**
+El comando `makemigrations` escanea tus modelos de Python en busca de cambios estructurales y genera archivos que describen esas alteraciones, funcionando como un historial de versiones para la base de datos. Por su parte, `migrate` lee esos archivos y ejecuta físicamente las sentencias SQL para modificar la base de datos real; no son intercambiables porque el primero solo planifica y redacta el cambio en código, mientras que el segundo es el mecanismo que aplica dicha planificación sobre los datos.
+
+**¿Qué guarda la columna category_id?**
+La columna `category_id` almacena el identificador numérico (la clave primaria) del registro asociado en la tabla de categorías, operando como una clave foránea (Foreign Key) a nivel de base de datos. En Django, aunque el campo en tu modelo se llame `category` para representar el objeto relacionado completo, el ORM añade automáticamente el sufijo `_id` para nombrar la columna real en la tabla SQL que guarda exclusivamente este número de referencia.
+
+**¿Qué diferencia hay entre all(), filter() y get()?**
+El método `all()` devuelve un `QuerySet` que contiene absolutamente todos los registros de una tabla, siendo útil para iterar sobre la colección completa. El método `filter()` también devuelve un `QuerySet`, pero restringido solo a los registros que cumplan con una o más condiciones, pudiendo retornar varios elementos, uno solo o ninguno; finalmente, `get()` busca un único registro exacto devolviendo el objeto en sí, pero lanza errores críticos si la consulta arroja más de un resultado o si no encuentra nada.
+
+**¿Por qué save() es necesario para guardar cambios de una instancia modificada?**
+El método `save()` es indispensable porque modificar los atributos de una instancia en Django solo altera temporalmente el objeto dentro de la memoria RAM del servidor de Python. El ORM no traduce esos cambios en memoria a una instrucción SQL de tipo `UPDATE` hasta que llamas explícitamente a este método, siendo el único momento en el que la aplicación contacta al motor de base de datos para hacer persistente la nueva información en el disco.
+
+**¿Qué protege on_delete=models.PROTECT?**
+El parámetro `on_delete=models.PROTECT` protege la integridad referencial de los datos bloqueando la eliminación de un registro padre si este tiene registros hijos asociados a él a través de una clave foránea. En lugar de borrar los elementos dependientes (como haría CASCADE) o dejarlos huérfanos, este comportamiento interrumpe la acción lanzando una excepción `ProtectedError`, asegurando que no se pueda eliminar una categoría si aún existen productos que dependen de ella.
+
+**¿Qué hace select_related("category")?**
+El uso de `select_related("category")` optimiza drásticamente las consultas instruyendo al ORM de Django para que realice un `JOIN` de SQL y extraiga los datos del modelo relacionado en la misma petición original a la base de datos. Sin esto, si consultas un listado de elementos y accedes a la categoría de cada uno mediante un bucle, Django haría una consulta independiente por cada registro (el problema de N+1); con esta instrucción, toda la información se resuelve en un único viaje de red.
+
+**¿Qué distingue Django Admin de una interfaz pública?**
+El Django Admin es un panel de gestión de datos prefabricado y altamente acoplado a los modelos, diseñado exclusivamente para que el personal del sitio y los administradores administren el contenido interno sin tener que programar interfaces de gestión. En contraste, la interfaz pública es el front-end de la aplicación destinado a los usuarios finales, el cual no se genera automáticamente y requiere que el desarrollador construya de cero las vistas, rutas, reglas de negocio y plantillas HTML para ofrecer una experiencia específica.
+
+**¿Por qué las pruebas usan TestCase y una base distinta?**
+Las pruebas utilizan la clase `TestCase` porque esta crea y destruye automáticamente una base de datos temporal, en blanco y completamente aislada para ejecutar los tests. Esto es fundamental porque garantiza que las pruebas no alteren, borren ni corrompan la información de tu entorno de desarrollo, y asegura que cada test inicie desde un estado limpio y predecible, evitando que los datos residuales generen falsos errores o aciertos.
+
+**¿Qué deberías agregar para permitir que una persona cree recursos desde la propia página web?**
+Para permitir esta interacción desde la interfaz pública, debes construir un formulario (frecuentemente usando `ModelForm` o HTML puro) que se renderice en una plantilla junto con el token de seguridad `{% csrf_token %}` para prevenir ataques de falsificación. Además, necesitas configurar una ruta y una vista (View) capaz de recibir las peticiones HTTP tipo POST, validar que los datos ingresados por el usuario sean correctos, invocar el guardado en la base de datos y ejecutar una redirección para confirmar el éxito de la acción.
