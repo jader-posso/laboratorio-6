@@ -1,0 +1,41 @@
+1. ¿Qué diferencia hay entre autenticación y autorización?
+La autenticación comprueba quién eres: Django verifica las credenciales con authenticate()/login() y crea una sesión, y request.user.is_authenticated lo refleja. La autorización decide qué puedes hacer: permisos, grupos y has_perm(). En ClassroomHub, /dashboard/ solo exige estar autenticado, mientras que /resources/review/ exige además el permiso pages.view_resource. Estar autenticado no implica estar autorizado.
+
+2. ¿Por qué las personas no utilizan la cuenta SQL para iniciar sesión?
+La cuenta SQL (classroomhub_user) es la identidad de la aplicación para conectarse a MariaDB; las personas son filas de la tabla auth_user. Si los usuarios usaran la cuenta SQL tendrían acceso directo a todas las tablas, no habría permisos por persona, ni contraseñas con hash, ni sesiones, y se expondrían las credenciales de la base de datos.
+
+3. ¿Qué hace UserCreationForm y qué no debe permitir?
+Valida el nombre de usuario (único y con caracteres válidos), exige dos contraseñas iguales y aplica los validadores de contraseña; al guardar crea el usuario con la contraseña cifrada. No debe permitir nombres repetidos, contraseñas distintas o débiles, ni crear privilegios: el formulario no incluye is_staff ni is_superuser, así que el registro público solo crea cuentas comunes.
+
+4. ¿Por qué set_password() es diferente de escribir una contraseña en un campo?
+set_password() aplica un hash con sal (por defecto PBKDF2) y guarda algoritmo, iteraciones, sal y hash en el campo password. Escribir el texto directamente en ese campo lo guardaría en claro o en un formato que check_password() no reconoce, y el login fallaría. Con hash, ni el administrador puede ver la contraseña original.
+
+5. ¿Qué diferencia hay entre una cookie de sesión y django_session?
+La cookie (sessionid) vive en el navegador y solo contiene un identificador aleatorio. La tabla django_session está en la base de datos y guarda session_key, session_data y expire_date. Los datos reales (como el contador de visitas del dashboard) quedan en el servidor; la cookie es solo la llave para encontrarlos. Al cerrar sesión, la sesión se invalida.
+
+6. ¿Por qué LoginView usa POST para recibir credenciales?
+Porque POST envía los datos en el cuerpo de la petición y no en la URL. Con GET, el usuario y la contraseña quedarían en el historial, en los registros del servidor y en cabeceras como Referer. Además, iniciar sesión cambia el estado (crea una sesión), y esas acciones no deben hacerse con GET. El formulario también incluye {% csrf_token %}.
+
+7. ¿Por qué LogoutView no se invoca con GET?
+Porque cerrar sesión cambia el estado, y un GET puede dispararse sin que el usuario lo quiera (un enlace, una imagen, la precarga del navegador) y cerrarle la sesión. Desde Django 5 LogoutView solo acepta POST (GET devuelve 405). En el proyecto usamos un formulario POST con CSRF y require_POST, y test_logout_get_is_not_allowed comprueba el 405.
+
+8. ¿Qué función cumple {% csrf_token %}?
+Inserta en el formulario un token secreto asociado al usuario. El middleware CSRF comprueba que el POST lo incluya y coincida con la cookie; si no, rechaza la petición con 403. Así otro sitio web no puede enviar formularios en nombre de un usuario con sesión iniciada. No se debe desactivar la protección; test_login_post_without_csrf_is_rejected lo verifica.
+
+9. ¿Cómo utiliza login_required el parámetro next?
+Si un anónimo entra a una vista protegida, login_required lo redirige a LOGIN_URL añadiendo ?next=/ruta-original/. Tras iniciar sesión correctamente, LoginView lee next y lo lleva a esa página, solo si es una URL segura (del mismo sitio); si no, usa LOGIN_REDIRECT_URL. Lo cubren test_anonymous_dashboard_redirects_to_login y test_login_respects_safe_next.
+
+10. ¿Por qué is_staff y has_perm() son conceptos diferentes?
+is_staff es una bandera de la cuenta que permite entrar a Django Admin. has_perm() comprueba un permiso concreto sobre un modelo o acción (por ejemplo pages.view_resource), asignado directamente o por un grupo. Un revisor del grupo Catalog reviewers tiene view_resource pero is_staff=False, así que puede ver la revisión y no puede entrar al administrador (test_reviewer_does_not_become_staff).
+
+11. ¿Qué demuestra un HTTP 403 frente a una redirección al login?
+La redirección al login (302) significa "no sé quién eres: identifícate" y ocurre con visitantes anónimos. El 403 significa "sé quién eres, pero no tienes permiso" y ocurre con una cuenta autenticada sin autorización. En /resources/review/: anónimo → 302 al login, cuenta común → 403, revisor → 200.
+
+12. ¿Por qué el permiso debe comprobarse en la vista y no solo en la plantilla?
+Porque la plantilla solo oculta el enlace: cualquiera puede escribir la URL a mano o usar otra herramienta. El servidor debe aplicar @permission_required en la vista, que es la que decide si responde. Ocultar el enlace mejora la navegación, pero no es seguridad. test_typing_review_url_cannot_bypass_permission lo comprueba con una cuenta común.
+
+13. ¿Por qué las pruebas necesitan una base diferente?
+Porque las pruebas crean, modifican y borran datos (por ejemplo Resource.objects.all().delete() y usuarios de prueba), lo que destruiría datos reales o haría que el resultado dependa de lo que haya guardado. Django crea test_classroom_hub vacía, aplica las migraciones, ejecuta las pruebas y la destruye al terminar, dejando intacta classroom_hub. La cuenta SQL solo necesita permisos sobre esa base de pruebas.
+
+14. ¿Qué falta para convertir el catálogo en un CRUD público autorizado?
+Falta crear un ModelForm para Resource; vistas para crear, editar y eliminar (con POST, validación, {% csrf_token %} y redirección tras guardar); las rutas y plantillas con formularios y mensajes de error; proteger cada vista con @login_required y @permission_required (add_resource, change_resource, delete_resource); una confirmación antes de eliminar; manejar errores como ProtectedError al borrar categorías; y pruebas de los casos 302, 403 y 200 y de las validaciones.

@@ -14,6 +14,16 @@ urlpatterns = [
         name="resource-review",
     ),
     path("about/", views.about, name="about"),
+    path(
+      "resources/new/",
+      views.ResourceCreateView.as_view(),
+      name="resource-create",
+    ),
+    path(
+        "resources/<int:pk>/",
+        views.ResourceDetailView.as_view(),
+        name="resource-detail",
+    ),
     path("accounts/signup/", views.signup, name="signup"),
     path(
         "accounts/login/",
@@ -22,9 +32,20 @@ urlpatterns = [
     ),
     path("accounts/logout/", require_POST(auth_views.LogoutView.as_view()), name="logout"),
     path("dashboard/", views.dashboard, name="dashboard"),
+  
     path(
         "dashboard/summary/",
         views.dashboard_summary,
         name="dashboard-summary",
+    ),
+    path(
+    "resources/<int:pk>/edit/",
+    views.ResourceUpdateView.as_view(),
+    name="resource-update",
+    ),
+    path(
+        "resources/<int:pk>/delete/",
+        views.ResourceDeleteView.as_view(),
+        name="resource-delete",
     ),
 ]

@@ -3,6 +3,21 @@ from django.contrib.auth.forms import UserCreationForm
 from django.shortcuts import redirect, render
 
 from .models import Resource
+from django.contrib.auth.mixins import (
+    LoginRequiredMixin,
+    PermissionRequiredMixin,
+)
+from django.urls import reverse_lazy
+from django.views.generic import (
+    CreateView,
+    DeleteView,
+    DetailView,
+    UpdateView,
+)
+
+from .forms import ResourceForm
+
+
 
 
 def home(request):
@@ -13,8 +28,15 @@ def home(request):
 
 
 def resources(request):
+    query = request.GET.get("q", "").strip()
+    resource_list = Resource.objects.select_related("category").all()
+
+    if query:
+        resource_list = resource_list.filter(title__icontains=query)
+
     context = {
-        "resources": Resource.objects.select_related("category").all(),
+        "resources": resource_list,
+        "query": query,
     }
     return render(request, "pages/resources.html", context)
 
@@ -69,3 +91,41 @@ def dashboard_summary(request):
         "available_resources": Resource.objects.filter(available=True).count(),
     }
     return render(request, "pages/summary.html", context)
+
+class ResourceDetailView(DetailView):
+    model = Resource
+    template_name = "pages/resource_detail.html"
+    context_object_name = "resource"
+
+class ResourceCreateView(
+    LoginRequiredMixin,
+    PermissionRequiredMixin,
+    CreateView,
+):
+    model = Resource
+    form_class = ResourceForm
+    template_name = "pages/resource_form.html"
+    permission_required = "pages.add_resource"
+    success_url = reverse_lazy("pages:resources")
+
+class ResourceUpdateView(
+    LoginRequiredMixin,
+    PermissionRequiredMixin,
+    UpdateView,
+):
+    model = Resource
+    form_class = ResourceForm
+    template_name = "pages/resource_form.html"
+    permission_required = "pages.change_resource"
+    success_url = reverse_lazy("pages:resources")
+
+
+class ResourceDeleteView(
+    LoginRequiredMixin,
+    PermissionRequiredMixin,
+    DeleteView,
+):
+    model = Resource
+    template_name = "pages/resource_confirm_delete.html"
+    permission_required = "pages.delete_resource"
+    success_url = reverse_lazy("pages:resources")

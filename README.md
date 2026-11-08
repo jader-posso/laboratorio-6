@@ -1,6 +1,6 @@
 # ClassroomHub
 
-Proyecto Django del Laboratorio 6, 7 y 8: catálogo de recursos de aprendizaje guardado en MySQL/MariaDB, con registro, login, panel privado y una página de revisión protegida por permisos.
+Proyecto Django de los Laboratorios 6 a 9: catálogo de recursos de aprendizaje guardado en MySQL/MariaDB, con registro, login, panel privado, una página de revisión protegida por permisos y un CRUD de recursos (detalle, crear, editar y eliminar) protegido por permisos.
 
 ## Requisitos
 
@@ -40,7 +40,11 @@ python manage.py runserver
 | Ruta | Acceso | Descripción |
 |---|---|---|
 | `/` | Público | Inicio |
-| `/resources/` | Público | Catálogo de recursos (viene de la base de datos) |
+| `/resources/` | Público | Catálogo de recursos (viene de la base de datos). Búsqueda de solo lectura por título: `/resources/?q=django` |
+| `/resources/<pk>/` | Público | Detalle de un recurso (404 si no existe) |
+| `/resources/new/` | Permiso `pages.add_resource` | Crear recurso (GET formulario, POST guarda) |
+| `/resources/<pk>/edit/` | Permiso `pages.change_resource` | Editar recurso (misma PK, mismo `ResourceForm`) |
+| `/resources/<pk>/delete/` | Permiso `pages.delete_resource` | GET muestra la confirmación; **solo el POST elimina** |
 | `/about/` | Público | Acerca de |
 | `/accounts/signup/` | Público | Registro de cuentas comunes (sin privilegios) |
 | `/accounts/login/` | Público | Inicio de sesión |
@@ -50,7 +54,7 @@ python manage.py runserver
 | `/resources/review/` | Requiere permiso `pages.view_resource` | Revisión del catálogo (HTTP 403 si falta el permiso) |
 | `/admin/` | Solo `is_staff` | Administración de Django |
 
-## Cuentas y grupo revisor
+## Cuentas y grupos
 
 1. Crea una cuenta en `/accounts/signup/` o desde `/admin/`.
 2. Entra a `/admin/` con el superusuario y abre **Groups → Add group**.
@@ -58,6 +62,33 @@ python manage.py runserver
 4. Abre la cuenta en **Users** y agrégala al grupo. No marques *Staff status*: el revisor no necesita entrar al administrador.
 
 Resultado esperado en `/resources/review/`: anónimo → redirige al login; cuenta común → 403; miembro del grupo → 200.
+
+### Categorías de ejemplo y grupo editor (CRUD)
+
+Las categorías se gestionan solo desde Django Admin (el CRUD público es únicamente de recursos).
+
+1. En `/admin/` abre **Categories → Add** y crea, por ejemplo, `Programming` y `Databases`.
+2. Abre **Groups → Add group** y crea **Catalog editors** con estos cuatro permisos de `pages | resource`: *Can view*, *Can add*, *Can change* y *Can delete resource*.
+3. En **Users** abre una **cuenta de demostración** y agrégala a **Catalog editors**. No marques *Staff status*: el CRUD usa permisos, no `is_staff`.
+
+| Operación | Anónimo | Cuenta común | Catalog reviewers | Catalog editors |
+|---|---|---|---|---|
+| Ver lista y detalle | Sí | Sí | Sí | Sí |
+| Revisar (`/resources/review/`) | No | No | Sí | Sí |
+| Crear / editar / eliminar | No | No | No | Sí |
+
+**Los permisos nunca se asignan mediante el formulario público de registro**: `/accounts/signup/` solo crea cuentas sin grupos ni privilegios; los grupos los asigna una cuenta administradora desde Admin.
+
+Anónimo → redirige al login; autenticado sin permiso → 403.
+
+### Rutas del CRUD
+
+```text
+GET  /resources/                 GET  /resources/<pk>/
+GET  /resources/new/             POST /resources/new/
+GET  /resources/<pk>/edit/       POST /resources/<pk>/edit/
+GET  /resources/<pk>/delete/     POST /resources/<pk>/delete/
+```
 
 ## Pruebas
 
@@ -67,7 +98,7 @@ python manage.py makemigrations --check --dry-run
 python manage.py test pages
 ```
 
-Hay 33 pruebas. Se ejecutan sobre la base descartable `test_classroom_hub`, que Django crea y destruye; no tocan los datos de `classroom_hub`. Estas pruebas cubren los flujos implementados, no son una auditoría de seguridad.
+Hay 68 pruebas (10 del catálogo, 12 de autenticación, 6 de permisos de revisión, 5 del resumen, 30 del CRUD y 5 de la búsqueda). Se ejecutan sobre la base descartable `test_classroom_hub`, que Django crea y destruye; no tocan los datos de `classroom_hub`. Estas pruebas cubren los flujos implementados, no son una auditoría de seguridad.
 
 ## Seguridad
 

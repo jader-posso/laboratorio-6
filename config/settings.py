@@ -20,6 +20,11 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / ".env")
 
 
+#Destinos de autenticación
+LOGIN_URL = "pages:login"
+LOGIN_REDIRECT_URL = "pages:dashboard"
+LOGOUT_REDIRECT_URL = "pages:home"
+
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
 
@@ -88,6 +93,7 @@ DATABASES = {
         "PORT": os.getenv("DB_PORT", "3306"),
         "OPTIONS": {
             "charset": "utf8mb4",
+            "init_command": "SET sql_mode='STRICT_TRANS_TABLES'",
         },
         "TEST": {
             "NAME": "test_classroom_hub",

@@ -1,0 +1,36 @@
+¿Qué diferencia existe entre un Form y un ModelForm?
+Un Form define sus campos a mano y no sabe nada de la base de datos. Un ModelForm los genera a partir de un modelo, hereda sus tipos, longitudes y validaciones, y trae un save() que crea o actualiza el objeto.
+¿Por qué conviene declarar explícitamente Meta.fields?
+Porque la lista define exactamente qué puede enviar una persona. Con "__all__", si mañana se agrega un campo interno al modelo, quedaría expuesto en el formulario sin que nadie lo decida. Aquí id y created_at quedan fuera a propósito.
+¿Qué ocurre cuando ResourceForm.is_valid() devuelve False?
+No se guarda nada. La vista vuelve a mostrar el formulario con los errores en form.errors y con los datos que la persona ya había escrito. La respuesta es 200, no una redirección.
+¿Qué ventajas aporta CreateView frente a repetir manualmente cada parte del manejo de POST?
+Ya incluye mostrar el formulario con GET, validar con POST, guardar si es válido, redirigir a success_url (patrón Post/Redirect/Get) y volver a mostrar errores si no lo es. Escribirlo a mano es más largo y es fácil olvidar un paso. La clase solo declara modelo, formulario, plantilla y permiso.
+¿Por qué UpdateView necesita recuperar el objeto existente?
+Para saber qué fila modificar y para rellenar el formulario con sus datos (instance=...). Sin la instancia, save() crearía una fila nueva en lugar de actualizar la existente. La PK llega por la URL (<int:pk>).
+¿Por qué DeleteView muestra una confirmación por GET y elimina por POST?
+Un GET debe ser seguro: un enlace, un rastreador o un clic accidental no deben borrar datos. Eliminar cambia el estado, así que exige una acción deliberada (POST) con token CSRF. El GET solo muestra «¿Seguro?» y no modifica la base.
+¿Qué ventaja aporta reverse_lazy() en atributos de vistas basadas en clases?
+Los atributos de clase se evalúan al importar el módulo, cuando las URLs aún no están cargadas. reverse() fallaría ahí (NoReverseMatch o import circular). reverse_lazy() espera a que la URL se necesite de verdad, ya con las rutas cargadas.
+¿Por qué una cuenta autenticada no puede editar sin pages.change_resource?
+Estar autenticado solo dice quién eres, no qué puedes hacer. PermissionRequiredMixin revisa en el servidor que la cuenta tenga ese permiso, directo o por un grupo. Si no lo tiene responde 403, aunque conozca la URL y envíe datos válidos.
+¿Qué diferencia hay entre Catalog reviewers y Catalog editors?
+Reviewers solo tiene view_resource: puede abrir /resources/review/ y nada más. Editors tiene view, add, change y delete: puede crear, editar y eliminar recursos. Son grupos separados para aplicar el menor privilegio. Ninguno necesita is_staff.
+¿Por qué los enlaces condicionales no sustituyen los permisos de la vista?
+Ocultar un enlace solo oculta la puerta, no la cierra. Cualquiera puede escribir la URL o enviar un POST manual con curl. El control real debe estar en el servidor (los mixins); el enlace condicional solo mejora la experiencia.
+¿Qué sucede cuando el ID de un recurso no existe?
+Las vistas genéricas (DetailView, UpdateView, DeleteView) responden 404. En editar y eliminar, quien no tiene permiso recibe 403 antes de saber si el recurso existe; el 404 aparece solo para quien sí está autorizado.
+¿Cómo compruebas que una actualización conserva la PK?
+Leo la PK antes de editar, edito y la vuelvo a leer: debe ser la misma, y Resource.objects.count() no debe aumentar. La prueba test_editor_can_update_existing_resource hace exactamente esa comprobación.
+¿Por qué la base de pruebas no puede contener datos importantes?
+Porque Django la crea desde cero (test_classroom_hub), aplica las migraciones, ejecuta las pruebas y la destruye. Cualquier dato que pusieras ahí se perdería. Por eso las pruebas crean sus propios datos ficticios y nunca tocan classroom_hub.
+¿Qué limitaciones quedan antes de exponer un CRUD real en Internet?
+Falta, por ejemplo:
+DEBUG=False, una SECRET_KEY propia en variable de entorno y ALLOWED_HOSTS.
+HTTPS con cookies Secure.
+Límite de intentos de login, paginación y auditoría de quién cambió qué.
+Papelera o recuperación de borrados.
+Validación de negocio en el modelo (el título mínimo de 3 caracteres solo vive en el formulario).
+Páginas de error 403 y 404 propias.
+Copias de seguridad.
+Una revisión de seguridad completa: las pruebas cubren los flujos implementados, no son una auditoría.
