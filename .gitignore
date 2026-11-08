@@ -1,0 +1,13 @@
+# Entorno virtual y credenciales (nunca se suben)
+.venv/
+.env
+
+# Archivos generados por Python y por Django
+__pycache__/
+*.py[cod]
+db.sqlite3
+*.log
+
+# Editores
+.vscode/
+.idea/
